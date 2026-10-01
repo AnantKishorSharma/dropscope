@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dropscope &middot; AI-fabric drop attribution</title>
+  <script src="/vendor/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117; --panel: #161b22; --border: #30363d; --fg: #e6edf3;
+      --muted: #8b949e; --accent: #58a6ff; --hot: #f85149; --warn: #d29922;
+      --ok: #3fb950;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg);
+      font: 14px/1.5 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    header {
+      display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+      border-bottom: 1px solid var(--border); background: var(--panel);
+    }
+    header h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
+    header .sub { color: var(--muted); font-size: 12px; }
+    .pill { margin-left: auto; display: flex; gap: 18px; align-items: center; }
+    .kpi { text-align: right; }
+    .kpi .n { font-size: 20px; font-weight: 700; }
+    .kpi .l { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    #status { font-size: 12px; padding: 3px 9px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--muted); }
+    #status.on { color: var(--ok); border-color: var(--ok); }
+    main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 20px; }
+    .panel { background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; }
+    .panel h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .5px; }
+    .full { grid-column: 1 / -1; }
+    .chartbox { position: relative; height: 260px; }
+    .chartbox > canvas { width: 100% !important; height: 100% !important; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    td.mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .tag { padding: 1px 7px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); }
+    .tag.buffer_full { color: var(--hot); border-color: var(--hot); }
+    .tag.wred { color: var(--warn); border-color: var(--warn); }
+    .tag.packet_integrity { color: var(--hot); border-color: var(--hot); }
+    .tag.port_discard { color: var(--warn); border-color: var(--warn); }
+    .tag.unattr { color: var(--muted); }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    #flowsPanel .subtitle { color: var(--accent); font-size: 12px; margin-bottom: 8px; }
+    .empty { color: var(--muted); padding: 18px 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>dropscope</h1>
+      <div class="sub">real-time drop attribution for AI / RoCEv2 fabrics</div>
+    </div>
+    <div class="pill">
+      <div class="kpi"><div class="n" id="kpiTotal">0</div><div class="l">drops</div></div>
+      <div class="kpi"><div class="n" id="kpiFlows">0</div><div class="l">flows</div></div>
+      <div class="kpi"><div class="n" id="kpiJobs">0</div><div class="l">jobs hit</div></div>
+      <span id="status">connecting&hellip;</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Drops by training job</h2>
+      <div class="chartbox"><canvas id="jobChart"></canvas></div>
+      <div class="hint">Click a bar to drill into that job's flows.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Drops per second (fabric-wide)</h2>
+      <div class="chartbox"><canvas id="tsChart"></canvas></div>
+    </section>
+
+    <section class="panel" id="flowsPanel">
+      <h2>Flow drill-down</h2>
+      <div class="subtitle" id="flowsTitle">Select a job to see affected flows</div>
+      <table>
+        <thead><tr><th>Flow (5-tuple + QP)</th><th>Role</th><th>Q</th><th>Reason</th><th>Drops</th></tr></thead>
+        <tbody id="flowsBody"><tr><td class="empty" colspan="5">No job selected.</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Live drop feed</h2>
+      <table>
+        <thead><tr><th>Flow</th><th>Job</th><th>Reason</th><th>Q</th></tr></thead>
+        <tbody id="feedBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/app.js?v=2"></script>
+</body>
+</html>

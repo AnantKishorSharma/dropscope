@@ -1,0 +1,15 @@
+# Training-job topology: which hosts / RoCE QP ranges belong to which job.
+# In production this would come from the scheduler (SLURM/K8s); here it is static.
+jobs:
+  - id: job-alpha
+    name: "LLM pretrain (alpha)"
+    hosts: ["10.0.1.0/24"]
+    qp_range: [1000, 1999]
+  - id: job-beta
+    name: "Recsys train (beta)"
+    hosts: ["10.0.2.0/24"]
+    qp_range: [2000, 2999]
+  - id: job-gamma
+    name: "Vision finetune (gamma)"
+    hosts: ["10.0.3.0/24"]
+    qp_range: [3000, 3999]

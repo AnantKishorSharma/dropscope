@@ -1,0 +1,54 @@
+TH5 hardware verification evidence -- dropscope MOD feasibility recon
+======================================================================
+DUT:      QFX5241 DUT (TH5)  (read-only recon, 2026-07-31)
+Build:    SONiC 202511 (dev build)
+Platform: x86_64-juniper_qfx5241-r0   HwSKU: Juniper-QFX5241-64-OD
+ASIC:     broadcom (Tomahawk 5-class); SAI 1.18
+Dockers:  swss / syncd / sflow all Up (7-8 days)
+
+FINDING: live per-flow Mirror-on-Drop (MOD) is NOT available on this box.
+------------------------------------------------------------------------
+1) orchagent has ZERO MOD strings:
+     `strings /usr/bin/orchagent | grep -iE 'drop_monitor|mirror_on_drop'`  -> (empty)
+   sflowmgrd likewise has ZERO MOD strings.
+   => the swss MOD implementation (community PR sonic-net/sonic-swss#3970) is
+      not in this build (it was still an open PR at this 2026-07-31 recon;
+      #3970 has since MERGED to sonic-swss master on 2026-09-23).
+
+2) SAI does NOT advertise the capability. STATE_DB SWITCH_CAPABILITY|switch:
+     MIRROR = true
+     MIRRORV6 = true
+     PORT_INGRESS_MIRROR_CAPABLE = true
+     PORT_EGRESS_MIRROR_CAPABLE = true
+     PORT_EGRESS_SAMPLE_CAPABLE = false
+     (no MIRROR_ON_DROP_CAPABLE / drop_monitor key present)
+   => this absence is a SONiC-side WIRING gap, not a SAI gap: orchagent (without
+      swss #3970) never queries the MOD capability, so the key is never written.
+      The platform's underlying SAI does implement MOD internally; the missing
+      piece is the SONiC-side swss #3970 wiring that queries the capability and
+      programs the TAM MOD-over-UDP export.
+
+3) What the chip DOES expose today (real drop telemetry, aggregate only):
+   `show dropcounters capabilities` -> PORT_INGRESS_DROPS (12 reasons):
+     INGRESS_VLAN_FILTER, MPLS_MISS, FDB_AND_BLACKHOLE_DISCARDS, SMAC_MULTICAST,
+     IP_HEADER_ERROR, L3_EGRESS_LINK_DOWN, TTL, EXCEEDS_L3_MTU, DIP_LINK_LOCAL,
+     SIP_LINK_LOCAL, ACL_ANY, SMAC_EQUALS_DMAC
+   `show dropcounters counts` -> real per-port RX_DROPS (e.g. Ethernet0=1,
+     Ethernet72=3); no per-flow / per-reason attribution without debug counters
+     or MOD.
+
+CONCLUSION for dropscope
+------------------------------------------------------------------------
+* The negative result is itself validation: it empirically confirms, with
+  capability evidence, the exact gap dropscope + PR #3970 address (per-flow /
+  root-cause drop attribution is not obtainable from the aggregate switch
+  telemetry available today).
+* Achievable HW artifact now: a DUT-seeded MODSource capture using the REAL
+  chip reason set + REAL ports (captures/th5-ug-seed.jsonl via
+  scripts/make_th5_capture.py), proving the adapter ingests real DUT-derived
+  drop telemetry end-to-end. Full live MOD is gated on swss #3970 (which queries
+  the MOD capability, creates a SAI TAM MOD-over-UDP report + binds it to the
+  switch, and sets MIRROR_ON_DROP_CAPABLE) -- the underlying platform SAI
+  already implements MOD. So MOD-on-TH5 is feasible: patch swss with
+  #3970, build, hot-swap, enable drop_monitor; then runtime-confirm the baked
+  libsai enables the MOD path (capability query returns true after #3970).

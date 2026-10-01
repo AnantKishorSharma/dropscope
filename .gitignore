@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.DS_Store
+
+# Broadcom SAI-derived enablement patches — kept private, never published.
+mod-broadcom/
+
+# Broadcom SDK-specific HW enablement (edits the platform SAI init YAML) — kept private.
+scripts/enable_th5_mod.sh
+
+# Raw packet captures carry device MACs/frames — ship the sanitized JSONL replays instead.
+captures/*.pcap

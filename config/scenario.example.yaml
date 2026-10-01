@@ -1,0 +1,30 @@
+# Synthetic scenario: an incast that primarily hurts job-alpha during allreduce.
+# The demo driver replays this in real time into the attribution pipeline.
+duration_seconds: 90
+base_rate_pps: 8                 # baseline drops/sec across the fabric
+fabric_ports: ["Ethernet0", "Ethernet8", "Ethernet16", "Ethernet24", "Ethernet32"]
+unattributed_pool: "10.9.9.0/24" # traffic not owned by any tracked job
+seed: 1337
+
+phases:
+  - name: baseline
+    start: 0
+    duration: 20
+    weights: {job-alpha: 1, job-beta: 1, job-gamma: 1, unattributed: 1}
+    reasons: {WRED: 3, BUFFER_FULL: 1}
+    queue: 0
+
+  - name: alpha-incast
+    start: 20
+    duration: 40
+    rate_pps: 40
+    weights: {job-alpha: 8, job-beta: 1, job-gamma: 1, unattributed: 1}
+    reasons: {BUFFER_FULL: 6, WRED: 3, MTU_EXCEEDED: 1}
+    queue: 3
+
+  - name: recovery
+    start: 60
+    duration: 30
+    weights: {job-alpha: 2, job-beta: 1, job-gamma: 1, unattributed: 1}
+    reasons: {WRED: 2, BUFFER_FULL: 1}
+    queue: 0
